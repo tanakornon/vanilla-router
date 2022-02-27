@@ -1,10 +1,5 @@
 import { MyRequest, Router } from './router';
 
-export interface CustomEvent {
-	Method: string;
-	Path: string;
-}
-
 function main() {
 	const app = new Router();
 
@@ -26,23 +21,23 @@ function main() {
 	});
 
 	console.log('CASE 1#: basic');
-	app.test({ Method: 'GET', Path: '/foo' });
+	app.test({ method: 'GET', path: '/foo' });
 	console.log();
 
 	console.log('CASE 2#: another method');
-	app.test({ Method: 'POST', Path: '/foo' });
+	app.test({ method: 'POST', path: '/foo' });
 	console.log();
 
 	console.log('CASE 3#: path parameter');
-	app.test({ Method: 'GET', Path: '/foo/test' });
+	app.test({ method: 'GET', path: '/foo/test' });
 	console.log();
 
 	console.log('CASE 4#: not found');
-	app.test({ Method: 'DELETE', Path: '/foo/test' });
+	app.test({ method: 'DELETE', path: '/foo/test' });
 	console.log();
 
 	console.log('CASE 5#: return value');
-	let result = app.test({ Method: 'GET', Path: '/foo/return/test' });
+	let result = app.test({ method: 'GET', path: '/foo/return/test' });
 	console.log(result);
 	console.log();
 }

@@ -1,60 +1,73 @@
 import { pathToRegexp, match, parse, compile, Key } from 'path-to-regexp';
-import { CustomEvent } from './index';
 
-export interface MyRequest {
-	header: { [key: string]: string };
-	query: { [key: string]: string };
-	params: { [key: string]: string };
+type Parameter = { [key: string]: string };
+
+export interface MyEvent {
+	method: string;
+	path: string;
 }
 
-type CallbackFunction = (req: MyRequest) => any;
+export interface MyRequest {
+	header: Parameter;
+	query: Parameter;
+	params: Parameter;
+}
 
 interface Route {
-	Method: string;
-	Path: string;
-	Callback: CallbackFunction;
+	method: string;
+	path: string;
+	handler: Function;
 }
 
 export class Router {
-	private routes: Route[];
+	private stack: Route[];
 
 	constructor() {
-		this.routes = [];
+		this.stack = [];
 	}
 
-	private buildRoute(
-		method: string,
-		path: string,
-		fn: CallbackFunction
-	): Route {
-		return {
-			Method: method,
-			Path: path,
-			Callback: fn,
-		};
+	private addRoute(method: string, path: string, handler: Function) {
+		this.stack.push({ method, path, handler });
 	}
 
-	public get(path: string, fn: CallbackFunction) {
-		this.routes.push(this.buildRoute('GET', path, fn));
+	public get(path: string, handler: Function) {
+		this.addRoute('GET', path, handler);
 	}
 
-	public post(path: string, fn: CallbackFunction) {
-		this.routes.push(this.buildRoute('POST', path, fn));
+	public post(path: string, handler: Function) {
+		this.addRoute('POST', path, handler);
 	}
 
-	public put(path: string, fn: CallbackFunction) {
-		this.routes.push(this.buildRoute('PUT', path, fn));
+	public put(path: string, handler: Function) {
+		this.addRoute('PUT', path, handler);
 	}
 
-	public delete(path: string, fn: CallbackFunction) {
-		this.routes.push(this.buildRoute('DELETE', path, fn));
+	public delete(path: string, handler: Function) {
+		this.addRoute('DELETE', path, handler);
 	}
 
-	public test(event: CustomEvent): any {
-		const matchRoute = this.routes
+	private parsePathParams(reqPath: string, pattern: string): Parameter {
+		const result: Parameter = {};
+
+		const keys: Key[] = [];
+		const regex = pathToRegexp(pattern, keys);
+		const params = regex.exec(reqPath)?.filter((_, index) => index > 0);
+
+		if (params) {
+			keys.forEach((key, index) => {
+				const name = key.name.toString();
+				result[name] = params[index];
+			});
+		}
+
+		return result;
+	}
+
+	public test(event: MyEvent): any {
+		const matchRoute = this.stack
 			.filter((route) => {
-				const matchPath = pathToRegexp(route.Path).exec(event.Path);
-				const matchMethod = route.Method === event.Method;
+				const matchPath = pathToRegexp(route.path).exec(event.path);
+				const matchMethod = route.method === event.method;
 				return matchPath && matchMethod;
 			})
 			.shift();
@@ -67,20 +80,9 @@ export class Router {
 		const reqParams: MyRequest = {
 			header: {},
 			query: {},
-			params: {},
+			params: this.parsePathParams(event.path, matchRoute.path),
 		};
 
-		const keys: Key[] = [];
-		const regex = pathToRegexp(matchRoute.Path, keys);
-		const params = regex.exec(event.Path)?.filter((_, index) => index > 0);
-
-		if (params) {
-			keys.forEach((key, index) => {
-				const name = key.name.toString();
-				reqParams.params[name] = params[index];
-			});
-		}
-
-		return matchRoute.Callback(reqParams);
+		return matchRoute.handler(reqParams);
 	}
 }
